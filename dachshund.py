@@ -1,7 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-# dis looks for things.
 
 import os, sys, time
 import win32api
